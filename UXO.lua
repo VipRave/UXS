@@ -1525,12 +1525,22 @@ local Library = (function()
         if Lib.Window and Shell and Shell.Parent then return Lib.Window end
         config = config or {}
         local compact = config.Compact and true or false
+        local initialView = Root.AbsoluteSize
+        if initialView.X < 1 or initialView.Y < 1 then
+            local camera = workspace.CurrentCamera
+            initialView = camera and camera.ViewportSize or Vector2.new(1280, 720)
+        end
+        local mobile = not compact and (config.Mobile == true
+            or (config.Mobile ~= false and (initialView.X < 650
+                or (UserInputService.TouchEnabled and initialView.X < 900))))
+        local windowWidth = compact and 400 or (mobile and 380 or 724)
+        local windowHeight = compact and 424 or (mobile and 560 or 516)
 
         Shell = new("Frame", {
             Name = tag(),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.fromScale(0.5, 0.5),
-            Size = compact and UDim2.fromOffset(400, 424) or UDim2.fromOffset(724, 516),
+            Size = UDim2.fromOffset(windowWidth, windowHeight),
             BackgroundColor3 = Theme.Shell,
             BorderSizePixel = 0,
             ClipsDescendants = true,
@@ -1540,6 +1550,54 @@ local Library = (function()
         outline(Shell, Theme.Line, 1)
         Scale = new("UIScale", { Scale = 1 }, Shell)
 
+        local mobileToggleButton
+        if mobile and config.MobileToggle ~= false then
+            mobileToggleButton = new("TextButton", {
+                Name = "MobileToggle",
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(1, -34, 0.72, 0),
+                Size = UDim2.fromOffset(48, 48),
+                BackgroundColor3 = Theme.AccentSoft,
+                BorderSizePixel = 0,
+                Font = Enum.Font.GothamBold,
+                TextSize = 12,
+                TextColor3 = Theme.Text,
+                Text = tostring(config.MobileToggleText or "UX"),
+                AutoButtonColor = false,
+                ZIndex = 175,
+            }, Root)
+            round(mobileToggleButton, PILL)
+            local mobileToggleEdge = outline(mobileToggleButton, Theme.Accent, 1.5)
+            local mobileToggleScale = new("UIScale", { Scale = 1 }, mobileToggleButton)
+            new("UIGradient", {
+                Rotation = 135,
+                Color = ColorSequence.new(Theme.Accent, Theme.AccentSoft),
+            }, mobileToggleButton)
+
+            bind(mobileToggleButton.InputBegan, function(input)
+                if input.UserInputType == Enum.UserInputType.Touch
+                    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    glide(mobileToggleScale, { Scale = 0.9 }, 0.08)
+                    glide(mobileToggleEdge, { Color = Theme.Text }, 0.08)
+                end
+            end)
+            bind(mobileToggleButton.InputEnded, function(input)
+                if input.UserInputType == Enum.UserInputType.Touch
+                    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    glide(mobileToggleScale, { Scale = 1 }, 0.12)
+                    glide(mobileToggleEdge, { Color = Theme.Accent }, 0.12)
+                end
+            end)
+            bind(mobileToggleButton.Activated, function()
+                if Lib.Unloaded then return end
+                if Shell.Visible then
+                    closePopups()
+                    TipCard.Visible = false
+                end
+                Shell.Visible = not Shell.Visible
+            end)
+        end
+
         local function refit()
             if not Scale then return end
             local view = Root.AbsoluteSize
@@ -1547,8 +1605,8 @@ local Library = (function()
                 local camera = workspace.CurrentCamera
                 view = camera and camera.ViewportSize or Vector2.new(1280, 720)
             end
-            local fit = math.min(1, (view.X - 24) / (compact and 400 or 724),
-                (view.Y - 24) / (compact and 424 or 516))
+            local fit = math.min(1, (view.X - 16) / windowWidth,
+                (view.Y - 16) / windowHeight)
             Scale.Scale = math.clamp(math.min(Lib.DPI or 1, fit), 0.35, 2)
         end
         Lib.Refit = refit
@@ -1593,7 +1651,7 @@ local Library = (function()
 
         local titleLabel = new("TextLabel", {
             Position = UDim2.fromOffset(54, 14),
-            Size = UDim2.fromOffset(240, 16),
+            Size = UDim2.fromOffset(mobile and 210 or 240, 16),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             TextSize = 15,
@@ -1604,7 +1662,7 @@ local Library = (function()
 
         local footerLabel = new("TextLabel", {
             Position = UDim2.fromOffset(54, 31),
-            Size = UDim2.fromOffset(300, 14),
+            Size = UDim2.fromOffset(mobile and 220 or 300, 14),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamMedium,
             TextSize = 11,
@@ -1624,6 +1682,7 @@ local Library = (function()
             TextXAlignment = Enum.TextXAlignment.Right,
             TextTruncate = Enum.TextTruncate.AtEnd,
             Text = "UI made by : VIPRAVE",
+            Visible = not mobile,
         }, top)
 
         local hideButton = new("TextButton", {
@@ -1675,16 +1734,18 @@ local Library = (function()
 
         local sidebar
         if not compact then
-            sidebar = new("Frame", {
-                Position = UDim2.fromOffset(0, 57),
-                Size = UDim2.new(0, 170, 1, -77),
-                BackgroundTransparency = 1,
-                ClipsDescendants = true,
-            }, Shell)
+            if not mobile then
+                sidebar = new("Frame", {
+                    Position = UDim2.fromOffset(0, 57),
+                    Size = UDim2.new(0, 170, 1, -77),
+                    BackgroundTransparency = 1,
+                    ClipsDescendants = true,
+                }, Shell)
+            end
 
             TabRail = new("ScrollingFrame", {
-                Position = UDim2.fromOffset(183, 64),
-                Size = UDim2.new(1, -195, 0, 40),
+                Position = mobile and UDim2.fromOffset(12, 64) or UDim2.fromOffset(183, 64),
+                Size = mobile and UDim2.new(1, -24, 0, 40) or UDim2.new(1, -195, 0, 40),
                 BackgroundColor3 = Theme.Sunken,
                 BackgroundTransparency = 0.08,
                 BorderSizePixel = 0,
@@ -1711,7 +1772,8 @@ local Library = (function()
             BackgroundColor3 = Theme.Panel,
             BorderSizePixel = 0,
             ClipsDescendants = true,
-        }, compact and Shell or sidebar)
+            Visible = not mobile,
+        }, (compact or mobile) and Shell or sidebar)
         round(card, UDim.new(0, Lib.CornerRadius), true)
         local cardEdge = outline(card, Theme.LineSoft, 1)
         new("UIGradient", {
@@ -1996,23 +2058,25 @@ local Library = (function()
         end)
 
         if not compact then
+            if not mobile then
+                new("Frame", {
+                    Position = UDim2.fromOffset(170, 57),
+                    Size = UDim2.new(0, 1, 1, -77),
+                    BackgroundColor3 = Theme.LineSoft,
+                    BorderSizePixel = 0,
+                }, Shell)
+            end
             new("Frame", {
-                Position = UDim2.fromOffset(170, 57),
-                Size = UDim2.new(0, 1, 1, -77),
-                BackgroundColor3 = Theme.LineSoft,
-                BorderSizePixel = 0,
-            }, Shell)
-            new("Frame", {
-                Position = UDim2.fromOffset(171, 111),
-                Size = UDim2.new(1, -171, 0, 1),
+                Position = mobile and UDim2.fromOffset(12, 111) or UDim2.fromOffset(171, 111),
+                Size = mobile and UDim2.new(1, -24, 0, 1) or UDim2.new(1, -171, 0, 1),
                 BackgroundColor3 = Theme.LineSoft,
                 BackgroundTransparency = 0.25,
                 BorderSizePixel = 0,
             }, Shell)
 
             PageHolder = new("Frame", {
-                Position = UDim2.fromOffset(171, 112),
-                Size = UDim2.new(1, -171, 1, -132),
+                Position = mobile and UDim2.fromOffset(0, 112) or UDim2.fromOffset(171, 112),
+                Size = mobile and UDim2.new(1, 0, 1, -132) or UDim2.new(1, -171, 1, -132),
                 BackgroundTransparency = 1,
             }, Shell)
         end
@@ -2053,7 +2117,7 @@ local Library = (function()
             if not minimized then
                 if TabRail then TabRail.Visible = true end
                 if PageHolder then PageHolder.Visible = true end
-                card.Visible = true
+                card.Visible = not mobile
                 statusStrip.Visible = true
             end
             glide(Shell, { Size = minimized and UDim2.new(fullSize.X.Scale, fullSize.X.Offset, 0, 56) or fullSize }, 0.14)
@@ -2077,7 +2141,11 @@ local Library = (function()
             setMinimized(not minimized)
         end)
 
-        local Window = { Instance = Shell }
+        local Window = {
+            Instance = Shell,
+            Mobile = mobile,
+            MobileToggleButton = mobileToggleButton,
+        }
 
         function Window:SetMinimized(state)
             setMinimized(state)
@@ -2127,7 +2195,8 @@ local Library = (function()
 
         function Window:AddTab(name)
             local tabName = tostring(name or "")
-            local tabWidth = math.clamp(#tabName * 7 + 30, 90, 142)
+            local tabWidth = mobile and math.clamp(#tabName * 6 + 24, 78, 118)
+                or math.clamp(#tabName * 7 + 30, 90, 142)
             local button = new("TextButton", {
                 Size = UDim2.fromOffset(tabWidth, 28),
                 BackgroundColor3 = Theme.Panel,
@@ -2167,10 +2236,10 @@ local Library = (function()
                 BackgroundTransparency = 1,
                 Visible = false,
             }, PageHolder)
-            pad(page, 16, 16, 14, 0)
+            pad(page, mobile and 12 or 16, mobile and 12 or 16, 14, 0)
 
             local left = new("ScrollingFrame", {
-                Size = UDim2.new(0.5, -8, 1, 0),
+                Size = mobile and UDim2.new(1, 0, 1, 0) or UDim2.new(0.5, -8, 1, 0),
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 CanvasSize = UDim2.new(),
@@ -2182,26 +2251,31 @@ local Library = (function()
             stack(left, 12)
             pad(left, 2, 8, 2, 16)
 
-            local right = new("ScrollingFrame", {
-                Position = UDim2.new(0.5, 8, 0, 0),
-                Size = UDim2.new(0.5, -8, 1, 0),
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-                CanvasSize = UDim2.new(),
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                ScrollBarThickness = 2,
-                ScrollBarImageColor3 = Theme.Line,
-                ScrollingDirection = Enum.ScrollingDirection.Y,
-            }, page)
-            stack(right, 12)
-            pad(right, 2, 8, 2, 16)
+            local right = left
+            if not mobile then
+                right = new("ScrollingFrame", {
+                    Position = UDim2.new(0.5, 8, 0, 0),
+                    Size = UDim2.new(0.5, -8, 1, 0),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    CanvasSize = UDim2.new(),
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    ScrollBarThickness = 2,
+                    ScrollBarImageColor3 = Theme.Line,
+                    ScrollingDirection = Enum.ScrollingDirection.Y,
+                }, page)
+                stack(right, 12)
+                pad(right, 2, 8, 2, 16)
+            end
 
             local Tab = { Name = tabName, Page = page, Left = left, Right = right, Button = button }
 
             function Tab:SetName(value)
                 self.Name = tostring(value or "")
                 label.Text = self.Name
-                button.Size = UDim2.fromOffset(math.clamp(#self.Name * 7 + 30, 90, 142), 28)
+                local width = mobile and math.clamp(#self.Name * 6 + 24, 78, 118)
+                    or math.clamp(#self.Name * 7 + 30, 90, 142)
+                button.Size = UDim2.fromOffset(width, 28)
             end
 
             function Tab:Select()
@@ -2359,6 +2433,20 @@ local Library = (function()
             return Shell.Visible
         end
 
+        function Window:SetMobileToggleVisible(state)
+            if mobileToggleButton then
+                mobileToggleButton.Visible = state and true or false
+            end
+            return self
+        end
+
+        function Window:SetMobileToggleText(text)
+            if mobileToggleButton then
+                mobileToggleButton.Text = tostring(text or "UX")
+            end
+            return self
+        end
+
         function Window:Toggle()
             self:SetVisible(not Shell.Visible)
         end
@@ -2425,12 +2513,19 @@ local Library = (function()
         Lib.PromptUsed = true
 
         local result = nil
+        local promptView = Root.AbsoluteSize
+        if promptView.X < 1 then
+            local camera = workspace.CurrentCamera
+            promptView = camera and camera.ViewportSize or Vector2.new(1280, 720)
+        end
+        local promptWidth = math.clamp(promptView.X - 24, 320, 560)
+        local promptCompact = promptWidth < 440
 
         -- ===== floating draggable panel =====
         local host = new("Frame", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.new(0, 560, 0, 0),
+            Size = UDim2.new(0, promptWidth, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             BackgroundColor3 = Theme.Shell,
             BorderSizePixel = 0,
@@ -2486,7 +2581,7 @@ local Library = (function()
 
         new("TextLabel", {
             Position = UDim2.fromOffset(46, 0),
-            Size = UDim2.new(0, 300, 1, 0),
+            Size = UDim2.new(1, -100, 1, 0),
             BackgroundTransparency = 1,
             Font = Enum.Font.GothamBold,
             TextSize = 15,
@@ -2506,6 +2601,7 @@ local Library = (function()
             TextSize = 8,
             TextColor3 = Theme.Accent,
             Text = string.upper(tostring(config.Service or "")),
+            Visible = not promptCompact,
             ZIndex = 102,
         }, bar)
         round(service, PILL)
@@ -2535,9 +2631,10 @@ local Library = (function()
         -- ===== center column (key side) =====
         local ONLINE = Theme.Success
 
+        local colMargin = promptCompact and 18 or 35
         local col = new("Frame", {
-            Position = UDim2.fromOffset(35, 70),
-            Size = UDim2.fromOffset(490, 0),
+            Position = UDim2.fromOffset(colMargin, 70),
+            Size = UDim2.new(1, -colMargin * 2, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             BackgroundTransparency = 1,
             ZIndex = 101,
@@ -2658,14 +2755,14 @@ local Library = (function()
 
         -- key input + REDEEM
         local inputRow = new("Frame", {
-            Size = UDim2.new(1, 0, 0, 46),
+            Size = UDim2.new(1, 0, 0, promptCompact and 100 or 46),
             BackgroundTransparency = 1,
             LayoutOrder = 8,
             ZIndex = 102,
         }, col)
 
         local input = new("TextBox", {
-            Size = UDim2.new(1, -190, 1, 0),
+            Size = promptCompact and UDim2.new(1, 0, 0, 44) or UDim2.new(1, -190, 1, 0),
             BackgroundColor3 = Theme.Raised,
             BorderSizePixel = 0,
             Font = Enum.Font.GothamMedium,
@@ -2684,9 +2781,9 @@ local Library = (function()
         pad(input, 12, 12, 0, 0)
 
         local redeem = new("TextButton", {
-            AnchorPoint = Vector2.new(1, 0),
-            Position = UDim2.new(1, 0, 0, 0),
-            Size = UDim2.fromOffset(180, 46),
+            AnchorPoint = promptCompact and Vector2.new(0, 0) or Vector2.new(1, 0),
+            Position = promptCompact and UDim2.fromOffset(0, 54) or UDim2.new(1, 0, 0, 0),
+            Size = promptCompact and UDim2.new(1, 0, 0, 44) or UDim2.fromOffset(180, 46),
             BackgroundColor3 = Theme.AccentSoft,
             BorderSizePixel = 0,
             Font = Enum.Font.GothamBold,
