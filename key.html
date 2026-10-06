@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uxosium Studio — Your Key</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px; box-sizing: border-box;
+  }
+  .card {
+    width: 100%; max-width: 440px; background: #0c0c0c; border: 1px solid #1f1f1f;
+    border-radius: 16px; padding: 32px 28px; text-align: center;
+  }
+  h1 { margin: 0 0 6px; font-size: 20px; letter-spacing: .3px; }
+  p.sub { margin: 0 0 24px; font-size: 13px; color: #8a8a8a; line-height: 1.5; }
+  .key {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px; word-break: break-all; background: #000; border: 1px solid #262626;
+    border-radius: 10px; padding: 16px; margin-bottom: 14px; user-select: all; line-height: 1.5;
+  }
+  .key.bad { color: #ff6b6b; border-color: #3a1f1f; }
+  button {
+    width: 100%; padding: 13px; font-size: 14px; font-weight: 600; color: #000; background: #fff;
+    border: 0; border-radius: 10px; cursor: pointer; font-family: inherit;
+  }
+  button:active { transform: translateY(1px); }
+  button[disabled] { background: #2a2a2a; color: #777; cursor: default; }
+  a.back {
+    display: block; margin-top: 16px; font-size: 13px; color: #8a8a8a; text-decoration: none;
+  }
+  a.back:hover { color: #fff; }
+  ol { text-align: left; font-size: 13px; color: #8a8a8a; line-height: 1.8; margin: 22px 0 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Uxosium Studio</h1>
+  <p class="sub">Checkpoints complete. Copy your key below, then redeem it in Discord.</p>
+  <div class="key" id="key">Reading key…</div>
+  <button id="copy">Copy key</button>
+  <a class="back" href="https://discord.gg/VGvURh5rak">Open Discord and redeem &rarr;</a>
+  <ol>
+    <li>Copy the key above.</li>
+    <li>Back in Discord, press <b>Redeem Key</b>.</li>
+    <li>Paste it. Keys are single-use and bound to your account.</li>
+  </ol>
+</div>
+<script>
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('token') || params.get('key') || params.get('t') || '';
+    if (!token && window.location.hash) {
+      token = new URLSearchParams(window.location.hash.slice(1)).get('token') || '';
+    }
+    var box = document.getElementById('key');
+    var copy = document.getElementById('copy');
+    if (!token) {
+      box.textContent = 'No key found in this link. Run the work.ink link from the start and finish every checkpoint.';
+      box.className = 'key bad';
+      copy.disabled = true;
+      return;
+    }
+    box.textContent = token;
+    copy.addEventListener('click', function () {
+      navigator.clipboard.writeText(token).then(function () {
+        copy.textContent = 'Copied';
+        setTimeout(function () { copy.textContent = 'Copy key'; }, 1600);
+      }, function () {
+        var range = document.createRange();
+        range.selectNodeContents(box);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        copy.textContent = 'Press Ctrl+C';
+      });
+    });
+  })();
+</script>
+</body>
+</html>
